@@ -1,6 +1,23 @@
 @AsyncPdfProcessor.Api_HostAddress = http://localhost:5122
+@referenceNo =98A2FE5C-D4E3-4B90-B9AC-47F8DBBA5773
+@exchangeRateDate =2025-11-02
 
-GET {{AsyncPdfProcessor.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+// GET /api/reports/{referenceNo}/status
+GET {{AsyncPdfProcessor.Api_HostAddress}}/api/reports/{{referenceNo}}/status
+
+###
+
+// GET /api/reports/{referenceNo}/download -> Download generated PDF
+GET {{AsyncPdfProcessor.Api_HostAddress}}/api/reports/{{referenceNo}}/download
+
+###
+
+// POST /api/reports -> Queue a report generation
+POST {{AsyncPdfProcessor.Api_HostAddress}}/api/reports
+Content-Type: application/json
+
+{
+ "exchangeRateDate": "{{exchangeRateDate}}"
+}
 
 ###
