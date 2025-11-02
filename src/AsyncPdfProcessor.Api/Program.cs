@@ -1,6 +1,7 @@
 using AsyncPdfProcessor.Infrastructure;
 using Hangfire;
 using Hangfire.SqlServer;
+using AsyncPdfProcessor.Api.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,5 +34,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.MapReportEndpoints();
 
 app.Run();
