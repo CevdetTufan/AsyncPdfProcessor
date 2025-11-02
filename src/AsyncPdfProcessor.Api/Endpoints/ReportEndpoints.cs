@@ -1,5 +1,7 @@
-﻿using AsyncPdfProcessor.Api.Models;
+﻿using AsyncPdfProcessor.Api.Models.Request;
+using AsyncPdfProcessor.Api.Models.Response;
 using AsyncPdfProcessor.Application.Interfaces;
+using AsyncPdfProcessor.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AsyncPdfProcessor.Api.Endpoints;
@@ -14,6 +16,9 @@ public static class ReportEndpoints
 
 		// GET /api/reports/{referenceNo}/status
 		group.MapGet("/{referenceNo}/status", GetReportStatus);
+
+		// POST /api/reports
+		group.MapPost("", QueueReport);
 	}
 
 	private static async Task<IResult> GetReportStatus(
@@ -28,5 +33,20 @@ public static class ReportEndpoints
 		}
 
 		return Results.Ok(job.ToResponseModel());
+	}
+
+	private static async Task<IResult> QueueReport([FromBody] ReportRequest request, IReportService reportService)
+	{
+		if (request.ExchangeRateDate.Date > DateTime.Today)
+		{
+			return Results.BadRequest(new { Message = "İstenen kur tarihi bugünden ileri olamaz." });
+		}
+
+		var referenceNo = await reportService.QueueReportGenerationAsync(request.ExchangeRateDate);
+
+		return Results.Accepted(
+			$"/api/reports/{referenceNo}/status",
+			ReportQueueResponse.Pending(referenceNo)
+		);
 	}
 }

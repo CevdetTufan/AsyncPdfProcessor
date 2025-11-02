@@ -1,6 +1,6 @@
 ﻿using AsyncPdfProcessor.Domain.Entities;
 
-namespace AsyncPdfProcessor.Api.Models;
+namespace AsyncPdfProcessor.Api.Models.Response;
 
 public record ReportStatusResponse(
 		Guid ReferenceNo,
