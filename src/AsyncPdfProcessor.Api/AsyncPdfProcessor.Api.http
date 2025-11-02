@@ -7,6 +7,11 @@ GET {{AsyncPdfProcessor.Api_HostAddress}}/api/reports/{{referenceNo}}/status
 
 ###
 
+// GET /api/reports/{referenceNo}/download -> Download generated PDF
+GET {{AsyncPdfProcessor.Api_HostAddress}}/api/reports/{{referenceNo}}/download
+
+###
+
 // POST /api/reports -> Queue a report generation
 POST {{AsyncPdfProcessor.Api_HostAddress}}/api/reports
 Content-Type: application/json

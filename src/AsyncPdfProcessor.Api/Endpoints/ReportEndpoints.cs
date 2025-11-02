@@ -19,6 +19,9 @@ public static class ReportEndpoints
 
 		// POST /api/reports
 		group.MapPost("", QueueReport);
+
+		// GET /api/reports/{referenceNo}/download
+		group.MapGet("/{referenceNo}/download", DownloadReport);
 	}
 
 	private static async Task<IResult> GetReportStatus(
@@ -47,6 +50,48 @@ public static class ReportEndpoints
 		return Results.Accepted(
 			$"/api/reports/{referenceNo}/status",
 			ReportQueueResponse.Pending(referenceNo)
+		);
+	}
+
+	private static async Task<IResult> DownloadReport(
+		[FromRoute] Guid referenceNo,
+		IReportService reportService,
+		IReportStorageStrategy storageStrategy)
+	{
+		var job = await reportService.GetReportDownloadDetailsAsync(referenceNo);
+
+		if (job == null)
+		{
+			return Results.NotFound(new { Message = "Rapor bulunamadı veya henüz kuyrukta/işleniyor. Lütfen durumu sorgulayın." });
+		}
+
+		if (job.Status == ReportStatus.Failed)
+		{
+			return Results.Conflict(new { Message = $"İşlem başarısız oldu ve indirme yapılamıyor. Hata: {job.FailureReason}" });
+		}
+
+		if (string.IsNullOrEmpty(job.StoragePath))
+		{
+			return Results.Json(
+				new { Message = "Rapor tamamlanmış görünüyor ancak dosya yolu kaydedilmemiş." },
+				statusCode: 500
+			);
+		}
+
+		Stream fileStream;
+		try
+		{
+			fileStream = await storageStrategy.GetReportStreamAsync(job.StoragePath);
+		}
+		catch (FileNotFoundException)
+		{
+			return Results.NotFound(new { Message = "Dosya depolama alanında bulunamadı (Sunucu hatası)." });
+		}
+
+		return Results.File(
+			fileStream,
+			contentType: "application/pdf",
+			fileDownloadName: $"TCMB_Rapor_{job.ExchangeRateDate:yyyyMMdd}_{referenceNo}.pdf"
 		);
 	}
 }
