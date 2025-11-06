@@ -132,3 +132,7 @@ The API will be available on the configured `applicationUrl` (see `src/AsyncPdfP
 ## Example screenshot
 
 ![PDF download screenshot](assets/pdf-download-screenshot.png)
+
+## PDF Sample
+
+- PDF sample file: `assets/16444b2e-25e2-4787-b435-116d91faf66c.pdf` — included in the repository.
