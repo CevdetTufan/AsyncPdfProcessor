@@ -1,7 +1,8 @@
+using AsyncPdfProcessor.Api.Endpoints;
 using AsyncPdfProcessor.Infrastructure;
 using Hangfire;
 using Hangfire.SqlServer;
-using AsyncPdfProcessor.Api.Endpoints;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +33,14 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.MapScalarApiReference(options =>
+{
+	options
+		.WithTitle("TCMB Today Exchange Rates PDF")
+		.WithDarkMode()
+		.WithTheme(ScalarTheme.Saturn);
+});
 
 app.UseHttpsRedirection();
 

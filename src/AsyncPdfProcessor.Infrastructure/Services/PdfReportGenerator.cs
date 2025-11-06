@@ -4,7 +4,6 @@ using AsyncPdfProcessor.Domain.Models;
 using AsyncPdfProcessor.Infrastructure.Persistence;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
-using System.IO;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -13,13 +12,18 @@ namespace AsyncPdfProcessor.Infrastructure.Services;
 internal class PdfReportGenerator(
 	ICentralBankClient tcmbClient,
 	IReportStorageStrategy storageStrategy,
-	AppDbContext dbContext): IPdfReportGenerator
+	AppDbContext dbContext) : IPdfReportGenerator
 {
 	private readonly ICentralBankClient _tcmbClient = tcmbClient;
 	private readonly IReportStorageStrategy _storageStrategy = storageStrategy;
 	private readonly AppDbContext _dbContext = dbContext;
 
-	[AutomaticRetry(Attempts = 3)] 
+	static PdfReportGenerator()
+	{
+		QuestPDF.Settings.License = LicenseType.Community;
+	}
+
+	[AutomaticRetry(Attempts = 3)]
 	public async Task ExecuteAsync(Guid reportJobId)
 	{
 		var job = await _dbContext.ReportJobs.FirstOrDefaultAsync(j => j.Id == reportJobId);
@@ -32,7 +36,7 @@ internal class PdfReportGenerator(
 		{
 			var rates = await _tcmbClient.GetTodayExchangeRatesAsync();
 
-			var pdfContent = GeneratePdfBytes(rates); 
+			var pdfContent = GeneratePdfBytes(rates, job.ExchangeRateDate);
 
 			var storagePath = await _storageStrategy.SaveReportAsync(job.Id, pdfContent);
 
@@ -54,12 +58,8 @@ internal class PdfReportGenerator(
 		}
 	}
 
-	private static byte[] GeneratePdfBytes(List<ExchangeRate> rates)
+	private static byte[] GeneratePdfBytes(List<ExchangeRate> rates, DateTime reportDate)
 	{
-		// Use the current UTC date as the report date. If you have a specific ExchangeRateDate,
-		// pass it into this method instead of using DateTime.UtcNow.
-		var reportDate = DateTime.UtcNow;
-
 		using var ms = new MemoryStream();
 
 		var document = Document.Create(container =>

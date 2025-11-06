@@ -15,13 +15,13 @@ public static class ReportEndpoints
 							   .WithOpenApi();
 
 		// GET /api/reports/{referenceNo}/status
-		group.MapGet("/{referenceNo}/status", GetReportStatus);
+		group.MapGet("/{referenceNo}/status", GetReportStatus).WithDisplayName("status");
 
 		// POST /api/reports
-		group.MapPost("", QueueReport);
+		group.MapPost("", QueueReport).WithDisplayName("queue");
 
 		// GET /api/reports/{referenceNo}/download
-		group.MapGet("/{referenceNo}/download", DownloadReport);
+		group.MapGet("/{referenceNo}/download", DownloadReport).WithDisplayName("download");
 	}
 
 	private static async Task<IResult> GetReportStatus(
