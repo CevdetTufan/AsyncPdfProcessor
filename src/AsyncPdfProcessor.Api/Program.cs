@@ -18,8 +18,8 @@ builder.Services.AddHangfire(config => config
 	// MSSQL'i depolama olarak ayarlar
 	.UseSqlServerStorage(hangfireConnectionString, new SqlServerStorageOptions
 	{
-		SchemaName = "HangFire", // Hangfire tabloları için ayrı schema
-		PrepareSchemaIfNecessary = true // Gerekirse tabloları otomatik oluştur
+		SchemaName = "HangFire", // Hangfire tablolarÃ½ iÃ§in ayrÃ½ schema
+		PrepareSchemaIfNecessary = true // Gerekirse tablolarÃ½ otomatik oluÃ¾tur
 	})
 );
 
