@@ -38,7 +38,7 @@ app.MapScalarApiReference(options =>
 {
 	options
 		.WithTitle("TCMB Today Exchange Rates PDF")
-		.WithDarkMode()
+		.EnableDarkMode()
 		.WithTheme(ScalarTheme.Saturn);
 });
 
@@ -46,4 +46,4 @@ app.UseHttpsRedirection();
 
 app.MapReportEndpoints();
 
-app.Run();
+await app.RunAsync();
