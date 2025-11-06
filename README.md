@@ -34,6 +34,38 @@ Implemented features (current repository state):
 - `tests/`
  - `AsyncPdfProcessor.Tests/` -> Integration / unit tests
 
+## Background processing (Hangfire)
+
+This project uses Hangfire to run report generation jobs in the background. The relevant implementation details:
+
+- **Storage**
+ - Hangfire is configured to use SQL Server storage in `Program.cs` via `UseSqlServerStorage(...)` with a custom schema name `HangFire`.
+ - Connection string is read from configuration key `ConnectionStrings:DefaultConnection`.
+
+- **Enqueue flow**
+ - The API layer calls `IReportService.QueueReportGenerationAsync(exchangeRateDate)` when a report request is received.
+ - `ReportService.QueueReportGenerationAsync` creates a `ReportJob` entity, persists it to the database (`ReportJobs` table) and then enqueues a Hangfire background job using `IBackgroundJobClient.Enqueue<T>`.
+ - The enqueued method signature is `IPdfReportGenerator.ExecuteAsync(Guid reportJobId)`; Hangfire resolves `IPdfReportGenerator` from DI when executing the job.
+
+- **Job execution lifecycle**
+ - `PdfReportGenerator.ExecuteAsync` is the background worker entry point. Typical steps inside the job:
+1. Load the `ReportJob` record by id from the DB.
+2. Update job status to `Processing` and save.
+3. Fetch exchange rates from the TCMB client.
+4. Generate PDF bytes (QuestPDF) and persist using the configured `IReportStorageStrategy` (currently `LocalFileStorageStrategy`).
+5. Update `ReportJob.StoragePath`, set status to `Completed`, set `CompletedAt` and save.
+6. On exception, set `ReportJob.Status = Failed`, store `FailureReason` and rethrow to let Hangfire record the failure.
+
+- **Retry behavior**
+ - `PdfReportGenerator` has an `AutomaticRetry` attribute (configured with Attempts =3) — this instructs Hangfire to retry failed executions up to the configured number of attempts.
+ - Transient errors from the TCMB client (HTTP failures) are surfaced as exceptions so Hangfire retries the job according to the retry policy.
+
+- **Worker hosting**
+ - The project registers Hangfire server via `builder.Services.AddHangfireServer()` allowing the same web application to process jobs inline (single-process worker). For production, you can run a separate dedicated worker process by hosting `AddHangfireServer` in a separate worker app or service (not required by current repository state).
+
+- **Observability**
+ - Hangfire stores job state and history in the configured SQL database. You can inspect job state using Hangfire dashboard if added; the dashboard is not currently hooked up in the default code but can be enabled easily by registering `app.UseHangfireDashboard()` in `Program.cs` and protecting it as needed.
+
 ## Components (concise)
 
 - API: Minimal API using .NET9 `WebApplication` and OpenAPI; routes under `/api/reports`.
@@ -43,7 +75,6 @@ Implemented features (current repository state):
 - PDF Generation: QuestPDF producing A4 tabular reports.
 - Storage: `LocalFileStorageStrategy` persists generated PDFs to disk.
 
-
 ## Storage (concrete implementation)
 
 The project contains a concrete implementation `LocalFileStorageStrategy` at `src/AsyncPdfProcessor.Infrastructure/Storages/LocalFileStorageStrategy.cs` which implements `IReportStorageStrategy`.
@@ -52,6 +83,26 @@ Behavior:
 - Storage directory: `${ContentRootPath}/LocalReports` (the API application's content root path + `LocalReports`).
 - File naming: `{reportId}.pdf` (GUID-based file name).
 - API download: `GET /api/reports/{referenceNo}/download` streams the file found at the stored path with content type `application/pdf`.
+
+## Database migrations
+
+EF Core migrations are included in the repository under `src/AsyncPdfProcessor.Infrastructure/Migrations`. Apply migrations using `dotnet ef` with the infrastructure project as the `--project` and the API as the `--startup-project`.
+
+Example commands (run from repository root):
+
+```bash
+# install tooling if needed
+dotnet tool install --global dotnet-ef
+
+# apply migrations
+dotnet ef database update \
+ --project src/AsyncPdfProcessor.Infrastructure \
+ --startup-project src/AsyncPdfProcessor.Api
+```
+
+Notes:
+- `--project` targets the project containing the `DbContext` (Infrastructure)
+- `--startup-project` targets the runnable project used for configuration and resolving connection strings (Api)
 
 ## How to run (development)
 
